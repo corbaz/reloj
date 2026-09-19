@@ -1,8 +1,5 @@
 export const createCountdownTimer = () => {
-  let timeoutId = null;
   let targetTimestamp = null;
-  let onTickCallback = null;
-  let onCompleteCallback = null;
   let isRunning = false;
 
   // Clock offset: authoritative international UTC minus client Date.now()
@@ -11,7 +8,6 @@ export const createCountdownTimer = () => {
 
   const probeTimeServer = async () => {
     const t0 = Date.now();
-    // Use the official CORS-enabled TimeAPI endpoint
     const response = await fetch("https://timeapi.io/api/time/current/zone?timeZone=Etc/UTC", {
       cache: "no-store",
     });
@@ -22,7 +18,6 @@ export const createCountdownTimer = () => {
     const t1 = Date.now();
     const rtt = t1 - t0;
 
-    // Use exact numeric fields to avoid string-parsing / local-timezone discrepancies
     const serverUtc = Date.UTC(
       data.year,
       data.month - 1,
@@ -44,7 +39,6 @@ export const createCountdownTimer = () => {
   const syncWithInternationalServer = async () => {
     const samples = [];
 
-    // Probe twice: sample 1 warms up TLS connection, sample 2 gets pure network latency
     for (let i = 0; i < 2; i++) {
       try {
         const sample = await probeTimeServer();
@@ -55,14 +49,13 @@ export const createCountdownTimer = () => {
     }
 
     if (samples.length > 0) {
-      // Pick lowest round-trip latency to eliminate jitter
       samples.sort((a, b) => a.rtt - b.rtt);
       serverOffset = Math.round(samples[0].offset);
       isSynced = true;
       return { offset: serverOffset, rtt: samples[0].rtt, source: "TimeAPI (NTP)" };
     }
 
-    // Fallback: Cloudflare trace with latency compensation
+    // Fallback: Cloudflare trace
     try {
       const t0 = Date.now();
       const cfResponse = await fetch("https://cloudflare.com/cdn-cgi/trace", { cache: "no-store" });
@@ -111,6 +104,10 @@ export const createCountdownTimer = () => {
   };
 
   const calculateRemaining = () => {
+    if (!targetTimestamp) {
+      return { total: 0, days: 0, hours: 0, minutes: 0, seconds: 0 };
+    }
+
     const total = targetTimestamp - getAuthoritativeNow();
     if (total <= 0) {
       return { total: 0, days: 0, hours: 0, minutes: 0, seconds: 0 };
@@ -124,85 +121,24 @@ export const createCountdownTimer = () => {
     return { total, days, hours, minutes, seconds };
   };
 
-  const scheduleNextTick = () => {
-    if (!isRunning) return;
-
-    // Sub-second phase alignment: schedule tick to land precisely on the UTC second boundary
-    const authoritativeNow = getAuthoritativeNow();
-    const elapsedInSecond = authoritativeNow % 1000;
-    const msUntilNextSecond = 1000 - elapsedInSecond;
-
-    // 15ms buffer guarantees execution strictly inside the new second across all JS engines
-    const delay = Math.max(15, msUntilNextSecond + 15);
-
-    timeoutId = setTimeout(() => {
-      if (!isRunning) return;
-
-      const remaining = calculateRemaining();
-
-      if (onTickCallback) {
-        onTickCallback(remaining);
-      }
-
-      if (remaining.total <= 0) {
-        stop();
-        if (onCompleteCallback) {
-          onCompleteCallback();
-        }
-      } else {
-        scheduleNextTick();
-      }
-    }, delay);
-  };
-
-  const start = (targetDate, tzOffsetHours = -3, onTick, onComplete) => {
-    stop();
-
+  const start = (targetDate, tzOffsetHours = -3) => {
     const parsedTimestamp = parseTargetWithOffset(targetDate, tzOffsetHours);
     if (parsedTimestamp <= getAuthoritativeNow()) {
       throw new Error("Target date must be a future date in the selected timezone.");
     }
 
     targetTimestamp = parsedTimestamp;
-    onTickCallback = onTick;
-    onCompleteCallback = onComplete;
     isRunning = true;
-
-    // Immediate first tick
-    const remaining = calculateRemaining();
-    if (onTickCallback) {
-      onTickCallback(remaining);
-    }
-
-    // Phase-aligned subsequent ticks
-    scheduleNextTick();
+    return calculateRemaining();
   };
 
   const retarget = (targetDate, tzOffsetHours = -3) => {
     if (!isRunning) return;
     targetTimestamp = parseTargetWithOffset(targetDate, tzOffsetHours);
-    realign();
-  };
-
-  const realign = () => {
-    if (!isRunning) return;
-    if (timeoutId !== null) {
-      clearTimeout(timeoutId);
-      timeoutId = null;
-    }
-    const remaining = calculateRemaining();
-    if (onTickCallback) {
-      onTickCallback(remaining);
-    }
-    scheduleNextTick();
   };
 
   const stop = () => {
     isRunning = false;
-    if (timeoutId !== null) {
-      clearTimeout(timeoutId);
-      timeoutId = null;
-    }
   };
 
   return {
@@ -211,9 +147,10 @@ export const createCountdownTimer = () => {
     isSynchronized: () => isSynced,
     getOffset: () => serverOffset,
     parseTargetWithOffset,
+    calculateRemaining,
     retarget,
-    realign,
     start,
     stop,
+    isActive: () => isRunning,
   };
 };

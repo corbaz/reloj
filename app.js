@@ -18,8 +18,7 @@ const cardMinutes = document.getElementById("card-minutes");
 const cardSeconds = document.getElementById("card-seconds");
 
 const timer = createCountdownTimer();
-let headerClockTimeout = null;
-let isCountdownActive = false;
+let masterTimeoutId = null;
 
 // Default timezone: Buenos Aires (GMT-3). Never saved to localStorage so F5 resets cleanly.
 let currentTzOffset = -3;
@@ -37,7 +36,7 @@ const setStatus = (message, type = "") => {
   statusMsg.className = "status-banner" + (type ? ` ${type}` : "");
 };
 
-// Convert authoritative UTC timestamp to any selected timezone components
+// Convert authoritative UTC timestamp to selected timezone components
 const getTimezoneDate = (timestamp, offsetHours) => {
   const offsetMs = offsetHours * 60 * 60 * 1000;
   const tzDate = new Date(timestamp + offsetMs);
@@ -50,30 +49,6 @@ const getTimezoneDate = (timestamp, offsetHours) => {
     minutes: padZero(tzDate.getUTCMinutes()),
     seconds: padZero(tzDate.getUTCSeconds()),
   };
-};
-
-// Update header digital clock with the currently selected timezone
-const updateClockDisplay = () => {
-  const authoritativeNow = timer.getAuthoritativeNow();
-  const { hours, minutes, seconds } = getTimezoneDate(authoritativeNow, currentTzOffset);
-  currentTimeDisplay.textContent = `${hours}:${minutes}:${seconds}`;
-};
-
-// Phase-aligned clock scheduler: synchronizes tick execution with the exact UTC second boundary
-const scheduleHeaderClock = () => {
-  if (headerClockTimeout !== null) {
-    clearTimeout(headerClockTimeout);
-    headerClockTimeout = null;
-  }
-
-  updateClockDisplay();
-
-  const authoritativeNow = timer.getAuthoritativeNow();
-  const elapsedInSecond = authoritativeNow % 1000;
-  const msUntilNextSecond = 1000 - elapsedInSecond;
-  const delay = Math.max(15, msUntilNextSecond + 15);
-
-  headerClockTimeout = setTimeout(scheduleHeaderClock, delay);
 };
 
 // 3D Flip Card Animator
@@ -116,6 +91,14 @@ const flipCard = (card, newValue) => {
   card.append(topFlip, bottomFlip);
 };
 
+const setCardDirect = (card, value) => {
+  card.dataset.value = value;
+  const topText = card.querySelector(".top .digit-text");
+  const bottomText = card.querySelector(".bottom .digit-text");
+  if (topText) topText.textContent = value;
+  if (bottomText) bottomText.textContent = value;
+};
+
 const updateDisplay = ({ days, hours, minutes, seconds }) => {
   flipCard(cardDays, padZero(days));
   flipCard(cardHours, padZero(hours));
@@ -129,6 +112,44 @@ const refreshTargetInputDefault = () => {
   const futureTimestamp = authoritativeNow + 2 * 60 * 60 * 1000;
   const target = getTimezoneDate(futureTimestamp, currentTzOffset);
   targetInput.value = `${target.year}-${target.month}-${target.day}T${target.hours}:${target.minutes}`;
+};
+
+// =========================================================================
+// UNIFIED MASTER HEARTBEAT DISPATCHER (Single Event Loop Source of Truth)
+// =========================================================================
+const masterHeartbeat = () => {
+  if (masterTimeoutId !== null) {
+    clearTimeout(masterTimeoutId);
+    masterTimeoutId = null;
+  }
+
+  const authoritativeNow = timer.getAuthoritativeNow();
+
+  // 1. Synchronously update top digital clock
+  const { hours, minutes, seconds } = getTimezoneDate(authoritativeNow, currentTzOffset);
+  currentTimeDisplay.textContent = `${hours}:${minutes}:${seconds}`;
+
+  // 2. Synchronously update countdown flip cards in the EXACT same tick
+  if (timer.isActive()) {
+    const remaining = timer.calculateRemaining();
+    updateDisplay(remaining);
+
+    if (remaining.total <= 0) {
+      timer.stop();
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      targetInput.disabled = false;
+      setStatus(`Target time reached in ${currentTzLabel}! Countdown finished.`, "success");
+    }
+  }
+
+  // 3. Schedule next tick precisely on the zero-millisecond boundary of the next UTC second
+  const elapsedInSecond = authoritativeNow % 1000;
+  const msUntilNextSecond = 1000 - elapsedInSecond;
+  // 20ms safety margin ensures we strictly evaluate inside the new second
+  const delay = Math.max(20, msUntilNextSecond + 20);
+
+  masterTimeoutId = setTimeout(masterHeartbeat, delay);
 };
 
 // Dynamic International Time Synchronization (SNTP)
@@ -149,13 +170,12 @@ const syncClock = async (isSilent = false) => {
     syncBadge.className = "badge badge-sync";
   }
 
-  scheduleHeaderClock();
-  timer.realign();
+  // Immediately execute unified heartbeat with freshly calibrated offset
+  masterHeartbeat();
 };
 
 // Initial boot
 const initClock = async () => {
-  // Always reset selector visually to Buenos Aires
   timezoneSelect.value = "-3";
   currentTzOffset = -3;
   currentTzLabel = "Buenos Aires";
@@ -169,8 +189,7 @@ initClock();
 // =========================================================================
 // TIMEZONE SELECTION LOGIC
 // =========================================================================
-
-timezoneSelect.addEventListener("change", (e) => {
+timezoneSelect.addEventListener("change", () => {
   const selectedOption = timezoneSelect.options[timezoneSelect.selectedIndex];
   currentTzOffset = parseFloat(selectedOption.value);
   currentTzLabel = selectedOption.dataset.label || selectedOption.text;
@@ -182,26 +201,24 @@ timezoneSelect.addEventListener("change", (e) => {
   tzTagDisplay.textContent = tagText;
   targetLabel.textContent = `Target Date & Time (${currentTzLabel} • ${tagText})`;
 
-  // Immediately refresh the live clock display to show selected city time
-  updateClockDisplay();
-
   // If countdown is active, retarget smoothly; otherwise update input default
-  if (isCountdownActive) {
+  if (timer.isActive()) {
     timer.retarget(targetInput.value, currentTzOffset);
     setStatus(`Target recalibrated to ${currentTzLabel} (${tagText}).`, "");
   } else {
     refreshTargetInputDefault();
   }
+
+  // Force synchronous update on next heartbeat
+  masterHeartbeat();
 });
 
 // =========================================================================
 // PRODUCTION-GRADE DRIFT & SUSPENSION RECOVERY MECHANISMS
 // =========================================================================
-
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") {
-    scheduleHeaderClock();
-    timer.realign();
+    masterHeartbeat();
     syncClock(true);
   }
 });
@@ -220,7 +237,6 @@ setInterval(() => {
 // =========================================================================
 // USER CONTROLS
 // =========================================================================
-
 startBtn.addEventListener("click", () => {
   const selectedDate = targetInput.value;
 
@@ -233,26 +249,16 @@ startBtn.addEventListener("click", () => {
   try {
     targetInput.classList.remove("error");
 
-    timer.start(
-      selectedDate,
-      currentTzOffset,
-      (remaining) => {
-        updateDisplay(remaining);
-      },
-      () => {
-        isCountdownActive = false;
-        startBtn.disabled = false;
-        stopBtn.disabled = true;
-        targetInput.disabled = false;
-        setStatus(`Target time reached in ${currentTzLabel}! Countdown finished.`, "success");
-      }
-    );
+    const remaining = timer.start(selectedDate, currentTzOffset);
+    updateDisplay(remaining);
 
-    isCountdownActive = true;
     startBtn.disabled = true;
     stopBtn.disabled = false;
     targetInput.disabled = true;
     setStatus(`Countdown in progress (${currentTzLabel} • ${formatTzTag(currentTzOffset)})...`, "");
+
+    // Trigger immediate heartbeat to align both timers
+    masterHeartbeat();
   } catch (err) {
     targetInput.classList.add("error");
     setStatus(err.message, "error");
@@ -261,9 +267,9 @@ startBtn.addEventListener("click", () => {
 
 stopBtn.addEventListener("click", () => {
   timer.stop();
-  isCountdownActive = false;
   startBtn.disabled = false;
   stopBtn.disabled = true;
   targetInput.disabled = false;
   setStatus("Countdown paused.", "");
+  masterHeartbeat();
 });

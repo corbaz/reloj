@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flip Clock Countdown - Patrón de Módulo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="main-container">
+    <section class="timer-card" aria-labelledby="card-title">
+      <header class="header">
+        <h1 id="card-title" class="title">Retro Flip Countdown</h1>
+
+        <div class="clock-row">
+          <div class="live-clock-pill" aria-label="Current International Time">
+            <span class="live-dot" aria-hidden="true"></span>
+            <span class="clock-label" id="clock-city-label">Buenos Aires:</span>
+            <span id="current-gmt3-time" class="live-time-display">--:--:--</span>
+            <span class="tz-tag" id="tz-tag-display">GMT-3</span>
+          </div>
+          <span id="sync-badge" class="badge badge-sync">Syncing UTC...</span>
+        </div>
+
+        <p class="subtitle">Authoritative International Time Sync (NTP) • Split-Flap 3D Clock</p>
+      </header>
+
+      <form id="timer-form" class="form-group" novalidate>
+        <div class="tz-selector-row">
+          <label for="timezone-select" class="input-label">City & Timezone</label>
+          <div class="select-wrapper">
+            <select id="timezone-select" class="tz-select" aria-label="Select City and Timezone">
+              <option value="-3" data-label="Buenos Aires" selected>Buenos Aires (GMT-3)</option>
+              <option value="-5" data-label="Bogotá / Lima">Bogotá / Lima (GMT-5)</option>
+              <option value="-6" data-label="Ciudad de México">Ciudad de México (GMT-6)</option>
+              <option value="-4" data-label="New York / Miami">New York / Miami (GMT-4)</option>
+              <option value="-3" data-label="São Paulo / Montevideo">São Paulo / Montevideo (GMT-3)</option>
+              <option value="0" data-label="Londres / UTC">Londres / UTC (GMT+0)</option>
+              <option value="1" data-label="Madrid / París">Madrid / París (GMT+1)</option>
+              <option value="2" data-label="Atenas / El Cairo">Atenas / El Cairo (GMT+2)</option>
+              <option value="9" data-label="Tokio">Tokio (GMT+9)</option>
+              <option value="10" data-label="Sídney">Sídney (GMT+10)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="label-row">
+          <label for="target-datetime" id="target-label" class="input-label">Target Date & Time (Buenos Aires • GMT-3)</label>
+        </div>
+        <div class="input-row">
+          <input
+            type="datetime-local"
+            id="target-datetime"
+            name="target-datetime"
+            class="datetime-input"
+            required
+            aria-describedby="status-msg"
+          />
+        </div>
+      </form>
+
+      <!-- Flip Clock Display -->
+      <div class="flip-clock" aria-live="off" id="countdown-display">
+        <div class="time-segment">
+          <div class="flip-card" id="card-days" data-value="00">
+            <div class="card-face top"><span class="digit-text">00</span></div>
+            <div class="card-face bottom"><span class="digit-text">00</span></div>
+          </div>
+          <span class="time-label">Days</span>
+        </div>
+
+        <span class="colon">:</span>
+
+        <div class="time-segment">
+          <div class="flip-card" id="card-hours" data-value="00">
+            <div class="card-face top"><span class="digit-text">00</span></div>
+            <div class="card-face bottom"><span class="digit-text">00</span></div>
+          </div>
+          <span class="time-label">Hours</span>
+        </div>
+
+        <span class="colon">:</span>
+
+        <div class="time-segment">
+          <div class="flip-card" id="card-minutes" data-value="00">
+            <div class="card-face top"><span class="digit-text">00</span></div>
+            <div class="card-face bottom"><span class="digit-text">00</span></div>
+          </div>
+          <span class="time-label">Minutes</span>
+        </div>
+
+        <span class="colon">:</span>
+
+        <div class="time-segment">
+          <div class="flip-card" id="card-seconds" data-value="00">
+            <div class="card-face top"><span class="digit-text">00</span></div>
+            <div class="card-face bottom"><span class="digit-text">00</span></div>
+          </div>
+          <span class="time-label">Seconds</span>
+        </div>
+      </div>
+
+      <!-- Action Controls -->
+      <div class="button-row">
+        <button type="button" id="start-btn" class="btn btn-primary">Start Countdown</button>
+        <button type="button" id="stop-btn" class="btn btn-secondary" disabled>Stop</button>
+      </div>
+
+      <!-- Status / Screen Reader Live Region -->
+      <div id="status-msg" class="status-banner" role="status" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

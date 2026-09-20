@@ -174,12 +174,32 @@ const syncClock = async (isSilent = false) => {
   masterHeartbeat();
 };
 
+// Automatically detect client's local timezone offset
+const detectInitialTimezone = () => {
+  const localOffsetHours = -Math.round(new Date().getTimezoneOffset() / 60);
+  const matchingOption = Array.from(timezoneSelect.options).find(
+    (opt) => parseFloat(opt.value) === localOffsetHours
+  );
+
+  if (matchingOption) {
+    timezoneSelect.value = String(localOffsetHours);
+    currentTzOffset = localOffsetHours;
+    currentTzLabel = matchingOption.dataset.label || matchingOption.text;
+  } else {
+    timezoneSelect.value = "-3";
+    currentTzOffset = -3;
+    currentTzLabel = "Buenos Aires";
+  }
+
+  const tagText = formatTzTag(currentTzOffset);
+  clockCityLabel.textContent = `${currentTzLabel}:`;
+  tzTagDisplay.textContent = tagText;
+  targetLabel.textContent = `Target Date & Time (${currentTzLabel} • ${tagText})`;
+};
+
 // Initial boot
 const initClock = async () => {
-  timezoneSelect.value = "-3";
-  currentTzOffset = -3;
-  currentTzLabel = "Buenos Aires";
-
+  detectInitialTimezone();
   await syncClock(false);
   refreshTargetInputDefault();
 };

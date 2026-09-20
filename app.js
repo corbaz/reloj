@@ -106,10 +106,10 @@ const updateDisplay = ({ days, hours, minutes, seconds }) => {
   flipCard(cardSeconds, padZero(seconds));
 };
 
-// Set default target input value (+2 hours in selected timezone)
+// Set default target input value (+1 hour in selected timezone)
 const refreshTargetInputDefault = () => {
   const authoritativeNow = timer.getAuthoritativeNow();
-  const futureTimestamp = authoritativeNow + 2 * 60 * 60 * 1000;
+  const futureTimestamp = authoritativeNow + 1 * 60 * 60 * 1000;
   const target = getTimezoneDate(futureTimestamp, currentTzOffset);
   targetInput.value = `${target.year}-${target.month}-${target.day}T${target.hours}:${target.minutes}`;
 };
@@ -201,12 +201,13 @@ timezoneSelect.addEventListener("change", () => {
   tzTagDisplay.textContent = tagText;
   targetLabel.textContent = `Target Date & Time (${currentTzLabel} • ${tagText})`;
 
-  // If countdown is active, retarget smoothly; otherwise update input default
+  // Always update input with +1 hour example in the new city
+  refreshTargetInputDefault();
+
+  // If countdown is active, retarget countdown towards the updated +1 hour target
   if (timer.isActive()) {
     timer.retarget(targetInput.value, currentTzOffset);
-    setStatus(`Target recalibrated to ${currentTzLabel} (${tagText}).`, "");
-  } else {
-    refreshTargetInputDefault();
+    setStatus(`Target updated to +1 hour in ${currentTzLabel} (${tagText}).`, "");
   }
 
   // Force synchronous update on next heartbeat

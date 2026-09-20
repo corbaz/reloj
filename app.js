@@ -1,4 +1,9 @@
-import { createCountdownTimer } from "./countdownTimer.js";
+import {
+  createCountdownTimer,
+  getTimezoneDate,
+  formatTzTag,
+  getTimezoneOffsetMinutes,
+} from "./countdownTimer.js";
 
 // DOM References
 const targetInput = document.getElementById("target-datetime");
@@ -20,35 +25,15 @@ const cardSeconds = document.getElementById("card-seconds");
 const timer = createCountdownTimer();
 let masterTimeoutId = null;
 
-// Default timezone: Buenos Aires (GMT-3). Never saved to localStorage so F5 resets cleanly.
-let currentTzOffset = -3;
+// Default timezone: Buenos Aires (America/Argentina/Buenos_Aires). Never saved to localStorage so F5 resets cleanly.
+let currentTimeZone = "America/Argentina/Buenos_Aires";
 let currentTzLabel = "Buenos Aires";
 
 const padZero = (num) => String(num).padStart(2, "0");
 
-const formatTzTag = (offsetHours) => {
-  const sign = offsetHours >= 0 ? "+" : "-";
-  return `GMT${sign}${Math.abs(offsetHours)}`;
-};
-
 const setStatus = (message, type = "") => {
   statusMsg.textContent = message;
   statusMsg.className = "status-banner" + (type ? ` ${type}` : "");
-};
-
-// Convert authoritative UTC timestamp to selected timezone components
-const getTimezoneDate = (timestamp, offsetHours) => {
-  const offsetMs = offsetHours * 60 * 60 * 1000;
-  const tzDate = new Date(timestamp + offsetMs);
-
-  return {
-    year: tzDate.getUTCFullYear(),
-    month: padZero(tzDate.getUTCMonth() + 1),
-    day: padZero(tzDate.getUTCDate()),
-    hours: padZero(tzDate.getUTCHours()),
-    minutes: padZero(tzDate.getUTCMinutes()),
-    seconds: padZero(tzDate.getUTCSeconds()),
-  };
 };
 
 // 3D Flip Card Animator
@@ -110,8 +95,20 @@ const updateDisplay = ({ days, hours, minutes, seconds }) => {
 const refreshTargetInputDefault = () => {
   const authoritativeNow = timer.getAuthoritativeNow();
   const futureTimestamp = authoritativeNow + 1 * 60 * 60 * 1000;
-  const target = getTimezoneDate(futureTimestamp, currentTzOffset);
+  const target = getTimezoneDate(futureTimestamp, currentTimeZone);
   targetInput.value = `${target.year}-${target.month}-${target.day}T${target.hours}:${target.minutes}`;
+};
+
+// Update select options with dynamic GMT tags based on current DST status
+const updateSelectOptionLabels = (nowTimestamp) => {
+  for (const option of timezoneSelect.options) {
+    const tz = option.value;
+    const tag = formatTzTag(nowTimestamp, tz);
+    if (!option.dataset.rawLabel) {
+      option.dataset.rawLabel = option.textContent.trim();
+    }
+    option.textContent = `(${tag}) ${option.dataset.rawLabel}`;
+  }
 };
 
 // =========================================================================
@@ -125,9 +122,10 @@ const masterHeartbeat = () => {
 
   const authoritativeNow = timer.getAuthoritativeNow();
 
-  // 1. Synchronously update top digital clock
-  const { hours, minutes, seconds } = getTimezoneDate(authoritativeNow, currentTzOffset);
+  // 1. Synchronously update top digital clock and timezone tag
+  const { hours, minutes, seconds } = getTimezoneDate(authoritativeNow, currentTimeZone);
   currentTimeDisplay.textContent = `${hours}:${minutes}:${seconds}`;
+  tzTagDisplay.textContent = formatTzTag(authoritativeNow, currentTimeZone);
 
   // 2. Synchronously update countdown flip cards in the EXACT same tick
   if (timer.isActive()) {
@@ -174,24 +172,33 @@ const syncClock = async (isSilent = false) => {
   masterHeartbeat();
 };
 
-// Automatically detect client's local timezone offset
+// Automatically detect client's local timezone
 const detectInitialTimezone = () => {
-  const localOffsetHours = -Math.round(new Date().getTimezoneOffset() / 60);
-  const matchingOption = Array.from(timezoneSelect.options).find(
-    (opt) => parseFloat(opt.value) === localOffsetHours
+  const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  let matchingOption = Array.from(timezoneSelect.options).find(
+    (opt) => opt.value === userTz
   );
 
+  // If exact IANA identifier is not in the list, match by current UTC offset
+  if (!matchingOption) {
+    const authoritativeNow = timer.getAuthoritativeNow();
+    const localOffsetMin = -new Date().getTimezoneOffset();
+    matchingOption = Array.from(timezoneSelect.options).find((opt) => {
+      return getTimezoneOffsetMinutes(authoritativeNow, opt.value) === localOffsetMin;
+    });
+  }
+
   if (matchingOption) {
-    timezoneSelect.value = String(localOffsetHours);
-    currentTzOffset = localOffsetHours;
+    timezoneSelect.value = matchingOption.value;
+    currentTimeZone = matchingOption.value;
     currentTzLabel = matchingOption.dataset.label || matchingOption.text;
   } else {
-    timezoneSelect.value = "-3";
-    currentTzOffset = -3;
+    timezoneSelect.value = "America/Argentina/Buenos_Aires";
+    currentTimeZone = "America/Argentina/Buenos_Aires";
     currentTzLabel = "Buenos Aires";
   }
 
-  const tagText = formatTzTag(currentTzOffset);
+  const tagText = formatTzTag(timer.getAuthoritativeNow(), currentTimeZone);
   clockCityLabel.textContent = `${currentTzLabel}:`;
   tzTagDisplay.textContent = tagText;
   targetLabel.textContent = `Target Date & Time (${currentTzLabel} • ${tagText})`;
@@ -199,8 +206,9 @@ const detectInitialTimezone = () => {
 
 // Initial boot
 const initClock = async () => {
-  detectInitialTimezone();
   await syncClock(false);
+  updateSelectOptionLabels(timer.getAuthoritativeNow());
+  detectInitialTimezone();
   refreshTargetInputDefault();
 };
 
@@ -211,10 +219,11 @@ initClock();
 // =========================================================================
 timezoneSelect.addEventListener("change", () => {
   const selectedOption = timezoneSelect.options[timezoneSelect.selectedIndex];
-  currentTzOffset = parseFloat(selectedOption.value);
+  currentTimeZone = selectedOption.value;
   currentTzLabel = selectedOption.dataset.label || selectedOption.text;
 
-  const tagText = formatTzTag(currentTzOffset);
+  const authoritativeNow = timer.getAuthoritativeNow();
+  const tagText = formatTzTag(authoritativeNow, currentTimeZone);
 
   // Update header and labels across the app
   clockCityLabel.textContent = `${currentTzLabel}:`;
@@ -223,7 +232,7 @@ timezoneSelect.addEventListener("change", () => {
 
   if (timer.isActive()) {
     // Keep user's configured target date/time intact; recalibrate countdown against new timezone
-    timer.retarget(targetInput.value, currentTzOffset);
+    timer.retarget(targetInput.value, currentTimeZone);
     setStatus(`Countdown recalibrated for ${currentTzLabel} (${tagText}).`, "");
   } else {
     // Only reset default to +1 hour if countdown is not actively running
@@ -270,13 +279,14 @@ startBtn.addEventListener("click", () => {
   try {
     targetInput.classList.remove("error");
 
-    const remaining = timer.start(selectedDate, currentTzOffset);
+    const remaining = timer.start(selectedDate, currentTimeZone);
     updateDisplay(remaining);
 
     startBtn.disabled = true;
     stopBtn.disabled = false;
     targetInput.disabled = true;
-    setStatus(`Countdown in progress (${currentTzLabel} • ${formatTzTag(currentTzOffset)})...`, "");
+    const tagText = formatTzTag(timer.getAuthoritativeNow(), currentTimeZone);
+    setStatus(`Countdown in progress (${currentTzLabel} • ${tagText})...`, "");
 
     // Trigger immediate heartbeat to align both timers
     masterHeartbeat();

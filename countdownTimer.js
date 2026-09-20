@@ -81,28 +81,6 @@ export const createCountdownTimer = () => {
 
   const getAuthoritativeNow = () => Date.now() + serverOffset;
 
-  const formatOffsetString = (offsetHours) => {
-    const sign = offsetHours >= 0 ? "+" : "-";
-    const absHours = Math.abs(offsetHours);
-    const h = String(Math.floor(absHours)).padStart(2, "0");
-    const m = String(Math.round((absHours % 1) * 60)).padStart(2, "0");
-    return `${sign}${h}:${m}`;
-  };
-
-  const parseTargetWithOffset = (dateStr, tzOffsetHours = -3) => {
-    const hasTimezone = dateStr.includes("Z") || /[+-]\d{2}(:\d{2})?$/.test(dateStr);
-    const offsetSuffix = formatOffsetString(tzOffsetHours);
-    const normalizedStr = hasTimezone
-      ? dateStr
-      : (dateStr.length === 16 ? `${dateStr}:00${offsetSuffix}` : `${dateStr}${offsetSuffix}`);
-
-    const parsed = new Date(normalizedStr).getTime();
-    if (Number.isNaN(parsed)) {
-      throw new Error("Invalid target date format.");
-    }
-    return parsed;
-  };
-
   const calculateRemaining = () => {
     if (!targetTimestamp) {
       return { total: 0, days: 0, hours: 0, minutes: 0, seconds: 0 };
@@ -123,8 +101,8 @@ export const createCountdownTimer = () => {
     return { total, days, hours, minutes, seconds };
   };
 
-  const start = (targetDate, tzOffsetHours = -3) => {
-    const parsedTimestamp = parseTargetWithOffset(targetDate, tzOffsetHours);
+  const start = (targetDate, timeZone = "America/Argentina/Buenos_Aires") => {
+    const parsedTimestamp = parseTargetInTimezone(targetDate, timeZone);
     if (parsedTimestamp <= getAuthoritativeNow()) {
       throw new Error("Target date must be a future date in the selected timezone.");
     }
@@ -134,9 +112,9 @@ export const createCountdownTimer = () => {
     return calculateRemaining();
   };
 
-  const retarget = (targetDate, tzOffsetHours = -3) => {
+  const retarget = (targetDate, timeZone = "America/Argentina/Buenos_Aires") => {
     if (!isRunning) return;
-    targetTimestamp = parseTargetWithOffset(targetDate, tzOffsetHours);
+    targetTimestamp = parseTargetInTimezone(targetDate, timeZone);
   };
 
   const stop = () => {
@@ -148,11 +126,87 @@ export const createCountdownTimer = () => {
     getAuthoritativeNow,
     isSynchronized: () => isSynced,
     getOffset: () => serverOffset,
-    parseTargetWithOffset,
     calculateRemaining,
     retarget,
     start,
     stop,
     isActive: () => isRunning,
   };
+};
+
+export const getTimezoneOffsetMinutes = (timestamp, timeZone) => {
+  const date = new Date(timestamp);
+  const getParts = (tz) => {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: tz,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    }).formatToParts(date);
+    const m = {};
+    for (const p of parts) m[p.type] = p.value;
+    return m;
+  };
+  const u = getParts("UTC");
+  const t = getParts(timeZone);
+  const uMs = Date.UTC(u.year, u.month - 1, u.day, u.hour, u.minute, u.second);
+  const tMs = Date.UTC(t.year, t.month - 1, t.day, t.hour, t.minute, t.second);
+  return Math.round((tMs - uMs) / 60000);
+};
+
+export const formatTzTag = (timestamp, timeZone) => {
+  const offsetMin = getTimezoneOffsetMinutes(timestamp, timeZone);
+  const sign = offsetMin >= 0 ? "+" : "-";
+  const absMin = Math.abs(offsetMin);
+  const h = Math.floor(absMin / 60);
+  const m = absMin % 60;
+  return m === 0 ? `GMT${sign}${h}` : `GMT${sign}${h}:${String(m).padStart(2, "0")}`;
+};
+
+export const getTimezoneDate = (timestamp, timeZone) => {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(new Date(timestamp));
+
+  const mapping = {};
+  for (const part of parts) {
+    mapping[part.type] = part.value;
+  }
+
+  return {
+    year: mapping.year,
+    month: mapping.month,
+    day: mapping.day,
+    hours: mapping.hour,
+    minutes: mapping.minute,
+    seconds: mapping.second,
+  };
+};
+
+export const parseTargetInTimezone = (dateStr, timeZone) => {
+  const [datePart, timePart] = dateStr.split("T");
+  const [y, m, d] = datePart.split("-").map(Number);
+  const [hh, mm, ss = 0] = timePart.split(":").map(Number);
+
+  const candidateUtc = Date.UTC(y, m - 1, d, hh, mm, ss);
+  const offsetMin = getTimezoneOffsetMinutes(candidateUtc, timeZone);
+  let refinedUtc = candidateUtc - offsetMin * 60 * 1000;
+
+  const refinedOffsetMin = getTimezoneOffsetMinutes(refinedUtc, timeZone);
+  if (refinedOffsetMin !== offsetMin) {
+    refinedUtc = candidateUtc - refinedOffsetMin * 60 * 1000;
+  }
+
+  return refinedUtc;
 };

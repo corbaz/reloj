@@ -29,34 +29,34 @@
         <div class="tz-selector-row">
           <label for="timezone-select" class="input-label">City & Timezone</label>
           <div class="select-wrapper">
-            <select id="timezone-select" class="tz-select" aria-label="Select City and Timezone">
-              <option value="-12" data-label="Isla Baker">Isla Baker / AoE (GMT-12)</option>
-              <option value="-11" data-label="Pago Pago">Pago Pago (GMT-11)</option>
-              <option value="-10" data-label="Honolulu">Honolulu (GMT-10)</option>
-              <option value="-9" data-label="Anchorage">Anchorage (GMT-9)</option>
-              <option value="-8" data-label="Los Ángeles">Los Ángeles (GMT-8)</option>
-              <option value="-7" data-label="Denver">Denver (GMT-7)</option>
-              <option value="-6" data-label="Ciudad de México">Ciudad de México (GMT-6)</option>
-              <option value="-5" data-label="Nueva York">Nueva York / Bogotá (GMT-5)</option>
-              <option value="-4" data-label="Santiago">Santiago / Caracas (GMT-4)</option>
-              <option value="-3" data-label="Buenos Aires" selected>Buenos Aires (GMT-3)</option>
-              <option value="-2" data-label="Fernando de Noronha">Fernando de Noronha (GMT-2)</option>
-              <option value="-1" data-label="Cabo Verde">Cabo Verde / Azores (GMT-1)</option>
-              <option value="0" data-label="Londres">Londres / UTC (GMT+0)</option>
-              <option value="1" data-label="Madrid">Madrid / París (GMT+1)</option>
-              <option value="2" data-label="El Cairo">El Cairo / Atenas (GMT+2)</option>
-              <option value="3" data-label="Moscú">Moscú / Estambul (GMT+3)</option>
-              <option value="4" data-label="Dubái">Dubái (GMT+4)</option>
-              <option value="5" data-label="Karachi">Karachi / Taskent (GMT+5)</option>
-              <option value="6" data-label="Daca">Daca / Almaty (GMT+6)</option>
-              <option value="7" data-label="Bangkok">Bangkok / Yakarta (GMT+7)</option>
-              <option value="8" data-label="Singapur">Singapur / Pekín (GMT+8)</option>
-              <option value="9" data-label="Tokio">Tokio / Seúl (GMT+9)</option>
-              <option value="10" data-label="Sídney">Sídney / Melbourne (GMT+10)</option>
-              <option value="11" data-label="Islas Salomón">Islas Salomón (GMT+11)</option>
-              <option value="12" data-label="Auckland">Auckland / Fiyi (GMT+12)</option>
-              <option value="13" data-label="Samoa">Samoa / Tonga (GMT+13)</option>
-              <option value="14" data-label="Kiritimati">Kiritimati / Kiribati (GMT+14)</option>
+            <select id="timezone-select" class="tz-select" aria-label="Select Country and Timezone">
+              <option value="Etc/GMT+12" data-label="Isla Baker / AoE">Isla Baker / Isla Howland (AoE)</option>
+              <option value="Pacific/Pago_Pago" data-label="Samoa Americana">Samoa Americana / Niue / Midway</option>
+              <option value="Pacific/Honolulu" data-label="Hawái">EE. UU. (Hawái) / Polinesia Francesa / Islas Cook</option>
+              <option value="America/Anchorage" data-label="Alaska">EE. UU. (Alaska) / Polinesia (Gambier)</option>
+              <option value="America/Los_Angeles" data-label="Los Ángeles / Costa Oeste">EE. UU. (Costa Oeste) / Canadá / México (Baja California)</option>
+              <option value="America/Denver" data-label="Denver / Montaña">EE. UU. (Montaña) / Canadá (Alberta) / México (Sonora)</option>
+              <option value="America/Mexico_City" data-label="Ciudad de México">México / EE. UU. (Centro) / Costa Rica</option>
+              <option value="America/New_York" data-label="Nueva York / Este">EE. UU. (Este) / Colombia / Perú</option>
+              <option value="America/Santiago" data-label="Santiago de Chile">Chile / Venezuela / Bolivia</option>
+              <option value="America/Argentina/Buenos_Aires" data-label="Buenos Aires" selected>Brasil / Argentina / Uruguay</option>
+              <option value="America/Noronha" data-label="Fernando de Noronha">Brasil (Noronha) / Georgias del Sur</option>
+              <option value="Atlantic/Cape_Verde" data-label="Cabo Verde">Cabo Verde / Portugal (Azores) / Groenlandia</option>
+              <option value="Europe/London" data-label="Londres">Reino Unido / Portugal / Ghana</option>
+              <option value="Europe/Madrid" data-label="Madrid">Alemania / Francia / España</option>
+              <option value="Africa/Cairo" data-label="El Cairo">Egipto / Sudáfrica / Grecia</option>
+              <option value="Europe/Moscow" data-label="Moscú">Rusia / Turquía / Arabia Saudita</option>
+              <option value="Asia/Dubai" data-label="Dubái">Emiratos Árabes / Azerbaiyán / Georgia</option>
+              <option value="Asia/Karachi" data-label="Karachi">Pakistán / Uzbekistán / Kazajistán</option>
+              <option value="Asia/Dhaka" data-label="Daca">Bangladés / Kirguistán / Bután</option>
+              <option value="Asia/Bangkok" data-label="Bangkok">Indonesia (Oeste) / Tailandia / Vietnam</option>
+              <option value="Asia/Singapore" data-label="Singapur">China / Filipinas / Singapur</option>
+              <option value="Asia/Tokyo" data-label="Tokio">Japón / Corea del Sur / Timor Oriental</option>
+              <option value="Australia/Sydney" data-label="Sídney">Australia / Papúa Nueva Guinea / Micronesia</option>
+              <option value="Pacific/Guadalcanal" data-label="Islas Salomón">Islas Salomón / Vanuatu / Nueva Caledonia</option>
+              <option value="Pacific/Auckland" data-label="Auckland">Nueva Zelanda / Fiyi / Tuvalu</option>
+              <option value="Pacific/Apia" data-label="Samoa">Samoa / Tonga / Kiribati (Fénix)</option>
+              <option value="Pacific/Kiritimati" data-label="Kiritimati">Kiribati (Islas de la Línea)</option>
             </select>
           </div>
         </div>
@@ -124,7 +124,7 @@
       </div>
 
       <div class="version-row">
-        <span class="version-tag">v.26.0920.09.57</span>
+        <span class="version-tag">v.26.0920.10.16</span>
       </div>
 
       <!-- Status / Screen Reader Live Region -->

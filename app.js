@@ -221,13 +221,13 @@ timezoneSelect.addEventListener("change", () => {
   tzTagDisplay.textContent = tagText;
   targetLabel.textContent = `Target Date & Time (${currentTzLabel} • ${tagText})`;
 
-  // Always update input with +1 hour example in the new city
-  refreshTargetInputDefault();
-
-  // If countdown is active, retarget countdown towards the updated +1 hour target
   if (timer.isActive()) {
+    // Keep user's configured target date/time intact; recalibrate countdown against new timezone
     timer.retarget(targetInput.value, currentTzOffset);
-    setStatus(`Target updated to +1 hour in ${currentTzLabel} (${tagText}).`, "");
+    setStatus(`Countdown recalibrated for ${currentTzLabel} (${tagText}).`, "");
+  } else {
+    // Only reset default to +1 hour if countdown is not actively running
+    refreshTargetInputDefault();
   }
 
   // Force synchronous update on next heartbeat

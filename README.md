@@ -5,9 +5,9 @@
 ![Licencia](https://img.shields.io/badge/licencia-MIT-blue.svg)
 ![Accesibilidad](https://img.shields.io/badge/WCAG-2.2%20AA-success.svg)
 ![Arquitectura](https://img.shields.io/badge/Arquitectura-Patrón%20de%20Módulo-yellow.svg)
-![Versión](https://img.shields.io/badge/versión-v.26.0920.08.12-yellow.svg)
+![Versión](https://img.shields.io/badge/versión-v.26.0920.09.57-yellow.svg)
 
-**Versión actual**: `v.26.0920.08.12` • **Producción**: [hora-web.surge.sh](https://hora-web.surge.sh)
+**Versión actual**: `v.26.0920.09.57` • **Producción**: [hora-web.surge.sh](https://hora-web.surge.sh)
 
 ---
 
